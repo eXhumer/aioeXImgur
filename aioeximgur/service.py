@@ -56,14 +56,14 @@ class Imgur:
     async def update_album_metadata(self, deletehash: str, **metadata: str):
         return await self.__session.post(
             f"{Imgur.api_base_url}/3/album/{deletehash}",
-            params={"client_id", Imgur.client_id},
+            params={"client_id": Imgur.client_id},
             json=metadata,
         )
 
     async def update_media_metadata(self, deletehash: str, **metadata: str):
         return await self.__session.post(
             f"{Imgur.api_base_url}/3/image/{deletehash}",
-            params={"client_id", Imgur.client_id},
+            params={"client_id": Imgur.client_id},
             json=metadata,
         )
 
@@ -90,19 +90,19 @@ class Imgur:
         return await self.__session.post(
             f"{Imgur.api_base_url}/3/image",
             data=form_data,
-            params={"client_id", Imgur.client_id},
+            params={"client_id": Imgur.client_id},
         )
 
     async def delete_album(self, deletehash: str):
         return await self.__session.delete(
             f"{Imgur.api_base_url}/3/album/{deletehash}",
-            params={"client_id", Imgur.client_id},
+            params={"client_id": Imgur.client_id},
         )
 
     async def delete_media(self, deletehash: str):
         return await self.__session.delete(
             f"{Imgur.api_base_url}/3/image/{deletehash}",
-            params={"client_id", Imgur.client_id},
+            params={"client_id": Imgur.client_id},
         )
 
     async def add_media_to_album(
@@ -112,7 +112,7 @@ class Imgur:
     ):
         return await self.__session.post(
             f"{Imgur.api_base_url}/3/album/{album_deletehash}/add",
-            params={"client_id", Imgur.client_id},
+            params={"client_id": Imgur.client_id},
             json={"deletehashes": media_deletehash},
         )
 
@@ -124,7 +124,7 @@ class Imgur:
     ):
         return await self.__session.put(
             f"{Imgur.api_base_url}/3/album/{album_deletehash}",
-            params={"client_id", Imgur.client_id},
+            params={"client_id": Imgur.client_id},
             json={"cover": cover_media_id, "deletehashes": media_deletehashes},
         )
 
