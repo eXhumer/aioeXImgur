@@ -14,7 +14,7 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 """Asynchronous Python interface to Imgur services"""
-from argparse import ArgumentParser, Namespace
+from argparse import ArgumentParser, ArgumentTypeError, Namespace
 from asyncio import (
     gather,
     run,
@@ -30,6 +30,15 @@ from .service import Imgur
 __version__ = require(__package__)[0].version
 
 
+def __media_file_path(path: str):
+    path_obj = Path(path)
+
+    if not path_obj.is_file() or not path_obj.name.endswith():
+        raise ArgumentTypeError("Invalid media path!")
+
+    return path_obj
+
+
 async def __parse_args(args: Namespace):
     if args.action == "upload-new-album":
         async with Imgur() as imgur:
@@ -40,40 +49,40 @@ async def __parse_args(args: Namespace):
                 and (album_res_json := await album_res.json())["status"] == 200
                 and album_res_json["success"] is True
             ):
-                raise ValueError("Invalid response while creating new album!")
+                raise RuntimeError(
+                    "\n".join([
+                        "Invalid response while creating new album!",
+                        await album_res_json.text(),
+                    ]),
+                )
 
             album_data = (
                 album_res_json["data"]["id"],
                 album_res_json["data"]["deletehash"],
             )
 
-            media_paths = [
-                media_path
-                for media_path
-                in args.media_paths
-                if media_path.is_file()
-            ]
-
-            await imgur.check_captcha(len(media_paths))
+            await imgur.check_captcha(len(args.media_paths))
 
             album_media_uploads = await gather(*[
                 imgur.upload_media(media_path)
                 for media_path
-                in media_paths
+                in args.media_paths
             ])
 
             upload_tickets = []
 
             for res in album_media_uploads:
+                res_json = await res.json()
+
                 if not (
                     res.status == 200
-                    and (res_json := await res.json())["status"] == 200
+                    and res_json["status"] == 200
                     and res_json["success"] is True
                 ):
-                    raise ValueError(
+                    raise RuntimeError(
                         "\n".join([
                             "Invalid response while uploading media!",
-                            await res.text(),
+                            str(res_json),
                         ]),
                     )
 
@@ -83,25 +92,28 @@ async def __parse_args(args: Namespace):
 
             while len(upload_tickets) != 0:
                 res = await imgur.poll_upload_tickets(*upload_tickets)
+                res_json = await res.json()
 
                 if not (
                     res.status == 200
-                    and (res_json := await res.json())["status"] == 200
+                    and res_json["status"] == 200
                     and res_json["success"] is True
                 ):
-                    raise ValueError(
-                        "Invalid response while polling upload tickets",
+                    raise RuntimeError(
+                        "\n".join([
+                            "Invalid response while polling upload tickets",
+                            str(res_json),
+                        ]),
                     )
 
                 for ticket in upload_tickets:
                     if ticket in res_json["data"]["done"]:
                         upload_tickets.remove(ticket)
+                        media_id = res_json["data"]["done"][ticket]
                         media_datas.append((
-                            media_id := res_json["data"]["done"][ticket],
-                            res_json["data"]["images"][media_id]["deletehash"]
+                            media_id,
+                            res_json["data"]["images"][media_id]["deletehash"],
                         ))
-
-                continue
 
             await gather(*[
                imgur.add_media_to_album(album_data[1], media_data[1])
@@ -127,9 +139,9 @@ def console_main():
     upload_new_album_parser = action_subparser.add_parser("upload-new-album")
     upload_new_album_parser.add_argument(
         "media_paths",
-        type=Path,
+        type=__media_file_path,
         nargs="*",
-        metavar="MEDIA-PATH",
+        metavar="MEDIA-FILE-PATH",
     )
 
     run(__parse_args(parser.parse_args()))
