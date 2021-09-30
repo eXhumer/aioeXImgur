@@ -33,7 +33,7 @@ __version__ = require(__package__)[0].version
 def __media_file_path(path: str):
     path_obj = Path(path)
 
-    if not path_obj.is_file() or not path_obj.name.endswith():
+    if not path_obj.is_file() or not path_obj.name.endswith((".mp4")):
         raise ArgumentTypeError("Invalid media path!")
 
     return path_obj
